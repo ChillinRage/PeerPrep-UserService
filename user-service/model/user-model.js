@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const Schema = mongoose.Schema;
+export const DEFAULT_IMAGE_URL = 'https://storage.cloud.google.com/peerprep_userimages/default.jpg';
 
 const UserModelSchema = new Schema({
   username: {
@@ -20,7 +21,7 @@ const UserModelSchema = new Schema({
   profileImage: {
     type: String,
     required: true,
-    default: "https://storage.cloud.google.com/peerprep_userimages/default.jpg",
+    default: DEFAULT_IMAGE_URL,
   },
   createdAt: {
     type: Date,

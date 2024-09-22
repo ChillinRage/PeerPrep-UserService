@@ -1,6 +1,5 @@
-import bcrypt from "bcrypt";
 import { isValidObjectId } from "mongoose";
-import { Storage } from "@google-cloud/storage";
+import { hashPassword, replaceProfileImage } from "./user-controller-utils.js";
 import {
   createUser as _createUser,
   deleteUserById as _deleteUserById,
@@ -22,8 +21,7 @@ export async function createUser(req, res) {
         return res.status(409).json({ message: "username or email already exists" });
       }
 
-      const salt = bcrypt.genSaltSync(10);
-      const hashedPassword = bcrypt.hashSync(password, salt);
+      const hashedPassword = hashPassword(password);
       const createdUser = await _createUser(username, email, hashedPassword);
 
       return res.status(201).json({
@@ -31,8 +29,9 @@ export async function createUser(req, res) {
         data: formatUserResponse(createdUser),
       });
     } else {
-      return res.status(400).json({ message: "username and/or email and/or password are missing" });
+      return res.status(400).json({ message: "username, email and/or password are missing" });
     }
+
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Unknown error when creating new user!" });
@@ -61,8 +60,8 @@ export async function getUser(req, res) {
 export async function getAllUsers(req, res) {
   try {
     const users = await _findAllUsers();
-
     return res.status(200).json({ message: `Found users`, data: users.map(formatUserResponse) });
+
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Unknown error when getting all users!" });
@@ -94,23 +93,10 @@ export async function updateUser(req, res) {
         }
       }
 
-      let hashedPassword;
-      if (password) {
-        const salt = bcrypt.genSaltSync(10);
-        hashedPassword = bcrypt.hashSync(password, salt);
-      }
+      const hashedPassword = hashPassword(password);
+      const newImage = await replaceProfileImage(userId, profileImage, user.profileImage);
 
-      if (profileImage) {
-          const storage = new Storage({projectId: 'peerprep-userservice-436407'});
-          const bucket = storage.bucket('peerprep_userimages');
-          const destinationPath = `${userId}/${profileImage.split("\\").pop()}`;
-
-          await bucket.upload(profileImage, {
-            destination: destinationPath,
-          });
-      }
-
-      const updatedUser = await _updateUserById(userId, username, email, hashedPassword, profileImage);
+      const updatedUser = await _updateUserById(userId, username, email, hashedPassword, newImage);
       return res.status(200).json({
         message: `Updated data for user ${userId}`,
         data: formatUserResponse(updatedUser),
