@@ -5,15 +5,16 @@ import { formatUserResponse } from "./user-controller.js";
 
 export async function handleLogin(req, res) {
   const { email, password } = req.body;
+
   if (email && password) {
     try {
       const user = await _findUserByEmail(email);
-      if (!user) {
+      if (!user) { // check if user exist
         return res.status(401).json({ message: "Wrong email and/or password" });
       }
 
       const match = await bcrypt.compare(password, user.password);
-      if (!match) {
+      if (!match) { // check if password matches account password
         return res.status(401).json({ message: "Wrong email and/or password" });
       }
 
@@ -22,6 +23,7 @@ export async function handleLogin(req, res) {
       }, process.env.JWT_SECRET, {
         expiresIn: "1d",
       });
+
       return res.status(200).json({ message: "User logged in", data: { accessToken, ...formatUserResponse(user) } });
     } catch (err) {
       return res.status(500).json({ message: err.message });

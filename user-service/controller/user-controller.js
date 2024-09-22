@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import { isValidObjectId } from "mongoose";
+import { Storage } from "@google-cloud/storage";
 import {
   createUser as _createUser,
   deleteUserById as _deleteUserById,
@@ -24,6 +25,7 @@ export async function createUser(req, res) {
       const salt = bcrypt.genSaltSync(10);
       const hashedPassword = bcrypt.hashSync(password, salt);
       const createdUser = await _createUser(username, email, hashedPassword);
+
       return res.status(201).json({
         message: `Created new user ${username} successfully`,
         data: formatUserResponse(createdUser),
@@ -69,8 +71,9 @@ export async function getAllUsers(req, res) {
 
 export async function updateUser(req, res) {
   try {
-    const { username, email, password } = req.body;
-    if (username || email || password) {
+    const { username, email, password, profileImage } = req.body;
+
+    if (username || email || password || profileImage) {
       const userId = req.params.id;
       if (!isValidObjectId(userId)) {
         return res.status(404).json({ message: `User ${userId} not found` });
@@ -79,6 +82,7 @@ export async function updateUser(req, res) {
       if (!user) {
         return res.status(404).json({ message: `User ${userId} not found` });
       }
+
       if (username || email) {
         let existingUser = await _findUserByUsername(username);
         if (existingUser && existingUser.id !== userId) {
@@ -95,7 +99,18 @@ export async function updateUser(req, res) {
         const salt = bcrypt.genSaltSync(10);
         hashedPassword = bcrypt.hashSync(password, salt);
       }
-      const updatedUser = await _updateUserById(userId, username, email, hashedPassword);
+
+      if (profileImage) {
+          const storage = new Storage({projectId: 'peerprep-userservice-436407'});
+          const bucket = storage.bucket('peerprep_userimages');
+          const destinationPath = `${userId}/${profileImage.split("\\").pop()}`;
+
+          await bucket.upload(profileImage, {
+            destination: destinationPath,
+          });
+      }
+
+      const updatedUser = await _updateUserById(userId, username, email, hashedPassword, profileImage);
       return res.status(200).json({
         message: `Updated data for user ${userId}`,
         data: formatUserResponse(updatedUser),
@@ -161,6 +176,7 @@ export function formatUserResponse(user) {
     id: user.id,
     username: user.username,
     email: user.email,
+    profileImage: user.profileImage,
     isAdmin: user.isAdmin,
     createdAt: user.createdAt,
   };

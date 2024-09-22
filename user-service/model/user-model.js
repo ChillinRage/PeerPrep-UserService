@@ -17,6 +17,11 @@ const UserModelSchema = new Schema({
     type: String,
     required: true,
   },
+  profileImage: {
+    type: String,
+    required: true,
+    default: "https://storage.cloud.google.com/peerprep_userimages/default.jpg",
+  },
   createdAt: {
     type: Date,
     default: Date.now, // Setting default to the current date/time
